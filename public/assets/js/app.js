@@ -12,6 +12,8 @@
   if (currentView === 'md') currentView = 'lg';
   let allRequests = [];
   let usersCache  = [];
+  let currentDetailFilter = 'all';
+  const DETAIL_USER_KEY = 'plexstats_detail_user_id';
 
   // -- Helpers --
 
@@ -44,6 +46,20 @@
     return '<span class="badge bg-secondary">Plex</span>';
   }
 
+  function detailUserIdFromHash() {
+    const m = /^#user-(\d+)$/.exec(globalThis.location.hash);
+    if (!m) return null;
+    const id = Number.parseInt(m[1], 10);
+    return Number.isInteger(id) ? id : null;
+  }
+
+  function openDetailFromUserId(userId) {
+    const user = usersCache.find(function (u) { return u.id === userId; });
+    if (!user) return false;
+    loadDetail(user.id, user.displayName, user.avatar, false);
+    return true;
+  }
+
   // -- Vista principal --
 
   function showMainView() {
@@ -68,7 +84,6 @@
 
   function load(year) {
     currentYear = year;
-    history.replaceState(null, '', location.pathname + location.search);
     showLoadingView();
     document.getElementById('headerYear').textContent = year;
     document.getElementById('thYear').textContent = year;
@@ -88,6 +103,7 @@
       .then(function (data) {
         if (data.error) throw new Error(data.error);
         renderUsersTable(data.users);
+        initDataTable();
 
         // Paso 2: conteo de solicitudes del año
         return fetch('/api/request-counts?year=' + encodeURIComponent(year));
@@ -110,7 +126,6 @@
       .then(function (data) {
         if (data.error) throw new Error(data.error);
         updateWatchCounts(data.byUser, data.total);
-        initDataTable();
       })
       .catch(function (err) {
         document.getElementById('loadingState').classList.add('d-none');
@@ -155,10 +170,17 @@
     document.getElementById('loadingState').classList.add('d-none');
     document.getElementById('tableCard').classList.remove('d-none');
 
-    const initMatch = /^#user-(\d+)$/.exec(globalThis.location.hash);
-    if (initMatch) {
-      const initUser = usersCache.find(function (u) { return u.id === Number.parseInt(initMatch[1], 10); });
-      if (initUser) loadDetail(initUser.id, initUser.displayName, initUser.avatar);
+    const hashUserId = detailUserIdFromHash();
+    if (hashUserId !== null) {
+      if (!openDetailFromUserId(hashUserId)) {
+        globalThis.sessionStorage.removeItem(DETAIL_USER_KEY);
+      }
+      return;
+    }
+
+    const persistedDetailUserId = Number.parseInt(globalThis.sessionStorage.getItem(DETAIL_USER_KEY) || '', 10);
+    if (Number.isInteger(persistedDetailUserId) && !openDetailFromUserId(persistedDetailUserId)) {
+      globalThis.sessionStorage.removeItem(DETAIL_USER_KEY);
     }
   }
 
@@ -183,13 +205,34 @@
     document.getElementById('statWatched').textContent = total.toLocaleString('es-ES');
   }
 
+  function applyDetailFilters() {
+    const q = document.getElementById('detailSearch').value.trim().toLowerCase();
+    const filtered = allRequests.filter(function (r) {
+      if (currentDetailFilter === 'watched' && !r.watched) return false;
+      if (currentDetailFilter === 'unwatched' && r.watched) return false;
+      if (q && !r.title.toLowerCase().includes(q)) return false;
+      return true;
+    });
+
+    renderGrid(filtered);
+  }
+
+  function setDetailFilter(filter) {
+    currentDetailFilter = filter;
+    document.querySelectorAll('.detail-filter-btn').forEach(function (btn) {
+      btn.classList.toggle('active', btn.dataset.filter === filter);
+    });
+    applyDetailFilters();
+  }
+
   function initDataTable() {
     if (dt) { dt.destroy(); dt = null; }
     dt = $('#usersTable').DataTable({
       paging:   false,
       info:     false,
       language: {
-        search:      'Buscar:',
+        search:      '',
+        searchPlaceholder: 'Buscar...',
         zeroRecords: 'No hay resultados.',
         emptyTable:  'Sin datos',
       },
@@ -200,7 +243,18 @@
 
   // -- Vista de detalle --
 
-  function loadDetail(userId, userName, avatar) {
+  function loadDetail(userId, userName, avatar, syncHash) {
+    const shouldSyncHash = syncHash !== false;
+    globalThis.sessionStorage.setItem(DETAIL_USER_KEY, String(userId));
+
+    if (shouldSyncHash) {
+      const targetHash = '#user-' + userId;
+      if (globalThis.location.hash !== targetHash) {
+        globalThis.location.hash = targetHash;
+        return;
+      }
+    }
+
     const dv = document.getElementById('detailView');
 
     document.getElementById('tableCard').classList.add('d-none');
@@ -222,6 +276,10 @@
     document.getElementById('detailControls').classList.add('d-none');
     document.getElementById('detailLoading').classList.remove('d-none');
     document.getElementById('detailSearch').value = '';
+    currentDetailFilter = 'all';
+    document.querySelectorAll('.detail-filter-btn').forEach(function (btn) {
+      btn.classList.toggle('active', btn.dataset.filter === 'all');
+    });
     allRequests = [];
 
     fetch('/api/user-requests?userId=' + userId + '&year=' + encodeURIComponent(currentYear))
@@ -254,7 +312,7 @@
       document.getElementById('detailControls').classList.remove('d-none');
     }
 
-    renderGrid(allRequests);
+    applyDetailFilters();
   }
 
   function renderGrid(reqs) {
@@ -328,11 +386,7 @@
   }
 
   function filterGrid(query) {
-    const q = query.trim().toLowerCase();
-    const filtered = q
-      ? allRequests.filter(function (r) { return r.title.toLowerCase().includes(q); })
-      : allRequests;
-    renderGrid(filtered);
+    applyDetailFilters();
   }
 
   function setView(view) {
@@ -356,27 +410,49 @@
       const tr = e.target.closest('tr');
       if (!tr) return;
       const userId = tr.dataset.userId;
-      if (userId) globalThis.location.hash = 'user-' + userId;
+      if (!userId) return;
+
+      const numericUserId = Number.parseInt(userId, 10);
+      if (!Number.isInteger(numericUserId)) return;
+
+      const user = usersCache.find(function (u) { return u.id === numericUserId; });
+      if (user) {
+        loadDetail(user.id, user.displayName, user.avatar);
+      }
     });
 
     document.getElementById('detailBack').addEventListener('click', function () {
-      history.back();
+      globalThis.sessionStorage.removeItem(DETAIL_USER_KEY);
+
+      if (detailUserIdFromHash() !== null) {
+        history.replaceState(null, '', globalThis.location.pathname + globalThis.location.search);
+      }
+
+      document.getElementById('detailView').classList.add('d-none');
+      showMainView();
     });
 
     globalThis.addEventListener('hashchange', function () {
-      const m = /^#user-(\d+)$/.exec(globalThis.location.hash);
-      if (m) {
-        const user = usersCache.find(function (u) { return u.id === Number.parseInt(m[1], 10); });
-        if (user) loadDetail(user.id, user.displayName, user.avatar);
-      } else {
-        document.getElementById('detailView').classList.add('d-none');
-        showMainView();
+      const hashUserId = detailUserIdFromHash();
+      if (hashUserId !== null) {
+        if (usersCache.length > 0) {
+          openDetailFromUserId(hashUserId);
+        }
+        return;
       }
+
+      globalThis.sessionStorage.removeItem(DETAIL_USER_KEY);
+      document.getElementById('detailView').classList.add('d-none');
+      showMainView();
     });
 
     document.querySelectorAll('.view-btn').forEach(function (btn) {
       btn.classList.toggle('active', btn.dataset.view === currentView);
       btn.addEventListener('click', function () { setView(btn.dataset.view); });
+    });
+
+    document.querySelectorAll('.detail-filter-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () { setDetailFilter(btn.dataset.filter); });
     });
 
     document.getElementById('detailSearch').addEventListener('input', function () {

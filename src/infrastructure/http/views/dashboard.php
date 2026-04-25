@@ -140,6 +140,11 @@
     <!-- Controles de vista y búsqueda -->
     <div id="detailControls" class="d-flex align-items-center gap-2 mb-3 d-none">
       <input id="detailSearch" type="search" class="form-control form-control-sm" placeholder="Buscar..." style="max-width:220px">
+      <div class="btn-group btn-group-sm" aria-label="Filtro de visionado">
+        <button type="button" class="btn btn-outline-secondary detail-filter-btn active" data-filter="all">Todos</button>
+        <button type="button" class="btn btn-outline-secondary detail-filter-btn" data-filter="watched">Vistos</button>
+        <button type="button" class="btn btn-outline-secondary detail-filter-btn" data-filter="unwatched">No vistos</button>
+      </div>
       <div class="ms-auto btn-group btn-group-sm" aria-label="Tamaño de vista">
         <button type="button" class="btn btn-outline-secondary view-btn active" data-view="lg" title="Grande">
           <i class="fas fa-th-large"></i>

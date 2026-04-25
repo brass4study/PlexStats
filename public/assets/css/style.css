@@ -136,13 +136,23 @@ table.dataTable {
   margin-bottom: 0 !important;
 }
 
+div.dataTables_wrapper > div.row:first-child > div:first-child {
+  display: none;
+}
+
+div.dataTables_wrapper > div.row:first-child > div:last-child {
+  width: 100%;
+  max-width: 100%;
+  flex: 0 0 100%;
+}
+
 div.dataTables_wrapper div.dataTables_filter {
   padding: 10px 16px;
-  text-align: right;
+  text-align: left;
 }
 
 div.dataTables_wrapper div.dataTables_filter input {
-  margin-left: 6px;
+  margin-left: 0;
 }
 
 /* ── Tabla clickable ─────────────────────────────────────────── */
