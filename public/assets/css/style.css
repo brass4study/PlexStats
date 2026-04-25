@@ -1,0 +1,145 @@
+/* ── Login ──────────────────────────────────────────────────── */
+.login-body {
+  background: linear-gradient(135deg, #0f0f1a 0%, #1c1c3a 100%);
+}
+
+.login-card {
+  width: 400px;
+  border: none;
+  border-radius: 16px;
+}
+
+.login-icon {
+  font-size: 2.5rem;
+}
+
+/* Botón "Entrar con Plex" */
+.btn-plex {
+  background-color: #e5a00d;
+  color: #000;
+  border: none;
+  padding: 0.65rem 1rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: background-color 0.15s ease;
+}
+
+.btn-plex:hover {
+  background-color: #f0b429;
+  color: #000;
+}
+
+/* ── Layout ─────────────────────────────────────────────────── */
+body {
+  background-color: #f0f2f5;
+}
+
+.navbar {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .4);
+}
+
+/* ── Stat cards ─────────────────────────────────────────────── */
+.stat-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 14px 22px;
+  min-width: 150px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, .08);
+}
+
+.stat-value {
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: #0d6efd;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #6c757d;
+  margin-top: 5px;
+}
+
+/* ── Table card ─────────────────────────────────────────────── */
+.card {
+  border: none;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.card-header {
+  background: #fff;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.table > :not(caption) > * > * {
+  padding: 0.7rem 0.9rem;
+}
+
+.table thead th {
+  font-size: 0.77rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+/* ── User avatar ─────────────────────────────────────────────── */
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.avatar-fallback {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+/* ── Request count ───────────────────────────────────────────── */
+.req-count {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.req-count.zero {
+  color: #ced4da;
+}
+
+/* ── Fila del usuario logueado ──────────────────────────────── */
+#usersTable tbody tr.row-me td {
+  background: linear-gradient(180deg, rgba(13, 110, 253, 0.13) 0%, rgba(13, 110, 253, 0.04) 100%) !important;
+}
+
+#usersTable tbody tr.row-me .fw-semibold::after {
+  content: ' (tú)';
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #0d6efd;
+  opacity: 0.75;
+}
+
+/* ── DataTables overrides ────────────────────────────────────── */
+table.dataTable {
+  margin-bottom: 0 !important;
+}
+
+div.dataTables_wrapper div.dataTables_filter {
+  padding: 10px 16px;
+  text-align: right;
+}
+
+div.dataTables_wrapper div.dataTables_filter input {
+  margin-left: 6px;
+}

@@ -1,0 +1,22 @@
+# Dependencias
+vendor/
+
+# Configuración con datos sensibles
+config/app.php
+
+# Variables de entorno
+.env
+.env.*
+
+# Caché y logs
+*.log
+/tmp/
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.swp

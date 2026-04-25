@@ -1,0 +1,17 @@
+Options -Indexes
+
+# Proteger directorios internos del acceso directo
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Bloquear acceso directo a src/, config/, bootstrap.php, composer.*
+    RewriteRule ^(src|config|vendor|bootstrap\.php|composer\.(json|lock))(/|$) - [F,L]
+
+    # Servir archivos y directorios reales sin reescribir (assets, etc.)
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Todo lo demás va al front controller
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
