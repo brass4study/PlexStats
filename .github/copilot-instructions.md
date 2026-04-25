@@ -41,4 +41,3 @@
 - Nunca exponer API keys en JS ni en vistas
 
 ## Workflow
-- Tras cualquier cambio en el código, revisar los SonarQube findings con la herramienta `sonarqube_analyze_file` y resolver los issues encontrados antes de dar la tarea por terminada

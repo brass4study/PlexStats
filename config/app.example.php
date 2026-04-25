@@ -21,4 +21,11 @@ return [
 
     // Año más antiguo que aparecerá en el selector
     'start_year'        => 2020,
+
+    // URL base de tu servidor Tautulli (sin barra final, sin /api/v2)
+    // Deja vacío si no usas Tautulli
+    'tautulli_url'      => '',
+
+    // API Key → Tautulli > Ajustes > Web Interface > API Key
+    'tautulli_api_key'  => '',
 ];

@@ -2,27 +2,54 @@
 
 declare(strict_types=1);
 
-use PlexStats\Application\UseCase\GetUsersWithRequestStats;
-use PlexStats\Infrastructure\Auth\OverseerrAuthService;
-use PlexStats\Infrastructure\Auth\PlexAuthService;
-use PlexStats\Infrastructure\Cache\SessionCache;
-use PlexStats\Infrastructure\Http\OverseerrHttpClient;
-use PlexStats\Infrastructure\Repository\CachedUserRepository;
-use PlexStats\Infrastructure\Repository\OverseerrUserRepository;
-use PlexStats\Presentation\Controller\AuthController;
-use PlexStats\Presentation\Controller\DashboardController;
-use PlexStats\Presentation\Controller\UsersApiController;
-use PlexStats\Presentation\Middleware\AuthMiddleware;
-use PlexStats\Presentation\Router;
+use PlexStats\Application\UseCases\GetUserRequestsWithWatchStatus;
+use PlexStats\Infrastructure\Adapters\OverseerrAuthService;
+use PlexStats\Infrastructure\Adapters\PlexAuthService;
+use PlexStats\Infrastructure\Adapters\OverseerrHttpClient;
+use PlexStats\Infrastructure\Adapters\TautulliHttpClient;
+use PlexStats\Infrastructure\Persistence\InMemory\SessionCache;
+use PlexStats\Infrastructure\Persistence\CachedUserRepository;
+use PlexStats\Infrastructure\Persistence\CachedWatchRepository;
+use PlexStats\Infrastructure\Persistence\OverseerrRequestRepository;
+use PlexStats\Infrastructure\Persistence\OverseerrUserRepository;
+use PlexStats\Infrastructure\Persistence\TautulliWatchRepository;
+use PlexStats\Infrastructure\Http\Controllers\AuthController;
+use PlexStats\Infrastructure\Http\Controllers\DashboardController;
+use PlexStats\Infrastructure\Http\Controllers\RequestCountsApiController;
+use PlexStats\Infrastructure\Http\Controllers\UserRequestsApiController;
+use PlexStats\Infrastructure\Http\Controllers\UsersApiController;
+use PlexStats\Infrastructure\Http\Controllers\WatchCountsApiController;
+use PlexStats\Infrastructure\Http\AuthMiddleware;
+use PlexStats\Infrastructure\Http\Routes\Router;
 
-spl_autoload_register(function (string $class): void {
-    $prefix = 'PlexStats\\';
-    if (!str_starts_with($class, $prefix)) {
-        return;
-    }
-    $file = __DIR__ . '/src/' . str_replace('\\', '/', substr($class, strlen($prefix))) . '.php';
-    if (file_exists($file)) {
-        require $file;
+$nsMap = [
+    'PlexStats\\Application\\UseCases\\'                 => __DIR__ . '/src/application/use-cases/',
+    'PlexStats\\Application\\Ports\\'                    => __DIR__ . '/src/application/ports/',
+    'PlexStats\\Application\\Dto\\'                      => __DIR__ . '/src/application/dto/',
+    'PlexStats\\Domain\\Entities\\'                      => __DIR__ . '/src/domain/entities/',
+    'PlexStats\\Domain\\Errors\\'                        => __DIR__ . '/src/domain/errors/',
+    'PlexStats\\Domain\\Services\\'                      => __DIR__ . '/src/domain/services/',
+    'PlexStats\\Domain\\ValueObjects\\'                  => __DIR__ . '/src/domain/value-objects/',
+    'PlexStats\\Infrastructure\\Adapters\\'              => __DIR__ . '/src/infrastructure/adapters/',
+    'PlexStats\\Infrastructure\\Http\\Controllers\\'     => __DIR__ . '/src/infrastructure/http/controllers/',
+    'PlexStats\\Infrastructure\\Http\\Routes\\'          => __DIR__ . '/src/infrastructure/http/routes/',
+    'PlexStats\\Infrastructure\\Http\\'                  => __DIR__ . '/src/infrastructure/http/',
+    'PlexStats\\Infrastructure\\Persistence\\InMemory\\' => __DIR__ . '/src/infrastructure/persistence/in-memory/',
+    'PlexStats\\Infrastructure\\Persistence\\'           => __DIR__ . '/src/infrastructure/persistence/',
+    'PlexStats\\Composition\\'                           => __DIR__ . '/src/composition/',
+    'PlexStats\\Shared\\'                                => __DIR__ . '/src/shared/',
+];
+
+spl_autoload_register(function (string $class) use ($nsMap): void {
+    foreach ($nsMap as $prefix => $baseDir) {
+        if (str_starts_with($class, $prefix)) {
+            $relative = str_replace('\\', '/', substr($class, strlen($prefix)));
+            $file     = $baseDir . $relative . '.php';
+            if (file_exists($file)) {
+                require_once $file;
+            }
+            return;
+        }
     }
 });
 
@@ -48,15 +75,28 @@ $plexAuth      = new PlexAuthService($config['plex_app_name'], $config['plex_cli
 $overseerrAuth = new OverseerrAuthService($config['overseerr_url'], $config['overseerr_api_key']);
 
 // ── Use Cases ─────────────────────────────────────────────────
-$getUserStats = new GetUsersWithRequestStats($repository);
+$watchRepository = null;
+if (!empty($config['tautulli_url']) && !empty($config['tautulli_api_key'])) {
+    $tautulliClient  = new TautulliHttpClient($config['tautulli_url'], $config['tautulli_api_key']);
+    $watchRepository = new CachedWatchRepository(new TautulliWatchRepository($tautulliClient), $cache);
+}
+
+$getUserRequests = new GetUserRequestsWithWatchStatus(
+    $repository,
+    new OverseerrRequestRepository($httpClient),
+    $watchRepository,
+);
 
 // ── Middleware ────────────────────────────────────────────────
 $auth = new AuthMiddleware();
 
 // ── Controllers ───────────────────────────────────────────────
-$authCtrl = new AuthController($plexAuth, $overseerrAuth, $config['app_url']);
-$dashCtrl = new DashboardController($config);
-$apiCtrl  = new UsersApiController($getUserStats);
+$authCtrl     = new AuthController($plexAuth, $overseerrAuth, $config['app_url']);
+$dashCtrl     = new DashboardController($config);
+$apiCtrl      = new UsersApiController($repository);
+$reqCtrl      = new UserRequestsApiController($getUserRequests);
+$reqCntCtrl   = new RequestCountsApiController($repository);
+$watchCntCtrl = new WatchCountsApiController($repository, $watchRepository);
 
 // ── Rutas ─────────────────────────────────────────────────────
 $router = new Router();
@@ -74,6 +114,21 @@ $router->add('GET', '/logout',             [$authCtrl, 'logout']);
 $router->add('GET', '/api/users', static function () use ($auth, $apiCtrl): void {
     $auth->requireAuth();
     $apiCtrl->index();
+});
+
+$router->add('GET', '/api/user-requests', static function () use ($auth, $reqCtrl): void {
+    $auth->requireAuth();
+    $reqCtrl->index();
+});
+
+$router->add('GET', '/api/request-counts', static function () use ($auth, $reqCntCtrl): void {
+    $auth->requireAuth();
+    $reqCntCtrl->index();
+});
+
+$router->add('GET', '/api/watch-counts', static function () use ($auth, $watchCntCtrl): void {
+    $auth->requireAuth();
+    $watchCntCtrl->index();
 });
 
 return $router;
