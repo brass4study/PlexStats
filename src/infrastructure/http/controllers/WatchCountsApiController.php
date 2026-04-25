@@ -24,7 +24,7 @@ final class WatchCountsApiController
             $year = (int)date('Y');
         }
 
-        // Sin integración Tautulli devolvemos todo a cero
+        // Sin integración Tautulli: retorna ceros
         if ($this->watchRepository === null) {
             echo json_encode(['byUser' => [], 'total' => 0], JSON_THROW_ON_ERROR);
             return;

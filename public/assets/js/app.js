@@ -8,7 +8,7 @@
 
   let dt          = null;
   let currentYear = null;
-  let currentView = (document.cookie.match(/(?:^|; )plexstats_view=([^;]+)/) || [])[1] || 'lg';
+  let currentView = (/(?:^|; )plexstats_view=([^;]+)/.exec(document.cookie) || [])[1] || 'lg';
   if (currentView === 'md') currentView = 'lg';
   let allRequests = [];
   let usersCache  = [];
@@ -155,9 +155,9 @@
     document.getElementById('loadingState').classList.add('d-none');
     document.getElementById('tableCard').classList.remove('d-none');
 
-    var initMatch = window.location.hash.match(/^#user-(\d+)$/);
+    const initMatch = /^#user-(\d+)$/.exec(globalThis.location.hash);
     if (initMatch) {
-      var initUser = usersCache.find(function (u) { return u.id === Number.parseInt(initMatch[1], 10); });
+      const initUser = usersCache.find(function (u) { return u.id === Number.parseInt(initMatch[1], 10); });
       if (initUser) loadDetail(initUser.id, initUser.displayName, initUser.avatar);
     }
   }
@@ -356,17 +356,17 @@
       const tr = e.target.closest('tr');
       if (!tr) return;
       const userId = tr.dataset.userId;
-      if (userId) window.location.hash = 'user-' + userId;
+      if (userId) globalThis.location.hash = 'user-' + userId;
     });
 
     document.getElementById('detailBack').addEventListener('click', function () {
       history.back();
     });
 
-    window.addEventListener('hashchange', function () {
-      var m = window.location.hash.match(/^#user-(\d+)$/);
+    globalThis.addEventListener('hashchange', function () {
+      const m = /^#user-(\d+)$/.exec(globalThis.location.hash);
       if (m) {
-        var user = usersCache.find(function (u) { return u.id === Number.parseInt(m[1], 10); });
+        const user = usersCache.find(function (u) { return u.id === Number.parseInt(m[1], 10); });
         if (user) loadDetail(user.id, user.displayName, user.avatar);
       } else {
         document.getElementById('detailView').classList.add('d-none');

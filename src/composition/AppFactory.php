@@ -29,7 +29,7 @@ final class AppFactory
 {
     public static function create(): Router
     {
-        $config = require __DIR__ . '/../../config/app.php';
+        $config = require_once __DIR__ . '/../../config/app.php';
 
         // ── Session ───────────────────────────────────────────────────
         session_set_cookie_params([
@@ -58,7 +58,6 @@ final class AppFactory
         }
 
         $getUserRequests = new GetUserRequestsWithWatchStatus(
-            $repository,
             new OverseerrRequestRepository($httpClient),
             $watchRepository,
         );
@@ -111,3 +110,4 @@ final class AppFactory
         return $router;
     }
 }
+
