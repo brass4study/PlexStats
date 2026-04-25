@@ -10,6 +10,8 @@ namespace PlexStats\Infrastructure\Persistence\InMemory;
  */
 final class SessionCache
 {
+    public const DEFAULT_TTL = 300;
+
     public function has(string $key): bool
     {
         if (!isset($_SESSION['_cache'][$key])) {
@@ -29,7 +31,7 @@ final class SessionCache
         return $_SESSION['_cache'][$key] ?? null;
     }
 
-    public function set(string $key, mixed $value, int $ttl = 300): void
+    public function set(string $key, mixed $value, int $ttl = self::DEFAULT_TTL): void
     {
         $_SESSION['_cache'][$key]     = $value;
         $_SESSION['_cache_exp'][$key] = time() + $ttl;
@@ -38,5 +40,10 @@ final class SessionCache
     public function invalidate(string $key): void
     {
         unset($_SESSION['_cache'][$key], $_SESSION['_cache_exp'][$key]);
+    }
+
+    public function invalidateAll(): void
+    {
+        unset($_SESSION['_cache'], $_SESSION['_cache_exp']);
     }
 }

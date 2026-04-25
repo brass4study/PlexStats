@@ -13,6 +13,8 @@
   let allRequests = [];
   let usersCache  = [];
   let currentDetailFilter = 'all';
+  let refreshCooldownTimer = null;
+  let mainStatsLoadedForYear = null;
   const DETAIL_USER_KEY = 'plexstats_detail_user_id';
 
   // -- Helpers --
@@ -67,6 +69,78 @@
     return true;
   }
 
+  function requestedDetailUserId() {
+    const hashUserId = detailUserIdFromHash();
+    if (hashUserId !== null) {
+      return hashUserId;
+    }
+
+    const persistedDetailUserId = Number.parseInt(globalThis.sessionStorage.getItem(DETAIL_USER_KEY) || '', 10);
+    return Number.isInteger(persistedDetailUserId) ? persistedDetailUserId : null;
+  }
+
+  function updateRefreshButton(lockedUntil) {
+    const button = document.getElementById('refreshCacheBtn');
+    const label = document.getElementById('refreshCacheBtnLabel');
+    if (!button || !label) {
+      return;
+    }
+
+    if (refreshCooldownTimer !== null) {
+      globalThis.clearTimeout(refreshCooldownTimer);
+      refreshCooldownTimer = null;
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    const remaining = Math.max(0, lockedUntil - now);
+
+    if (remaining <= 0) {
+      button.disabled = false;
+      label.textContent = 'Refrescar';
+      return;
+    }
+
+    button.disabled = true;
+    label.textContent = 'Refrescar (' + remaining + ' s)';
+    refreshCooldownTimer = globalThis.setTimeout(function () {
+      updateRefreshButton(lockedUntil);
+    }, 1000);
+  }
+
+  function refreshCache() {
+    const button = document.getElementById('refreshCacheBtn');
+    if (!button || button.disabled) {
+      return;
+    }
+
+    button.disabled = true;
+
+    fetch('/api/cache/refresh', { method: 'POST' })
+      .then(function (r) {
+        return r.json().then(function (data) {
+          if (!r.ok) {
+            throw data;
+          }
+          return data;
+        });
+      })
+      .then(function (data) {
+        updateRefreshButton(data.lockedUntil || 0);
+        load(currentYear);
+      })
+      .catch(function (err) {
+        if (err?.lockedUntil) {
+          updateRefreshButton(err.lockedUntil);
+          return;
+        }
+
+        button.disabled = false;
+        const el = document.getElementById('errorState');
+        el.textContent = 'Error al refrescar la caché.';
+        el.classList.remove('d-none');
+      });
+  }
+
   // -- Vista principal --
 
   function showMainView() {
@@ -89,10 +163,58 @@
 
   // -- Pipeline de carga en 3 pasos --
 
+  function loadMainStats(year) {
+    return fetch('/api/request-counts?year=' + encodeURIComponent(year))
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        if (data.error) throw new Error(data.error);
+        updateRequestCounts(data.byUser, data.total, data.active);
+
+        return fetch('/api/watch-counts?year=' + encodeURIComponent(year));
+      })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        if (data.error) throw new Error(data.error);
+        updateWatchCounts(data.byUser, data.total);
+        mainStatsLoadedForYear = year;
+      });
+  }
+
+  function ensureMainStatsLoaded() {
+    if (currentYear === null || mainStatsLoadedForYear === currentYear) {
+      return;
+    }
+
+    loadMainStats(currentYear)
+      .catch(function (err) {
+        const el = document.getElementById('errorState');
+        el.textContent = 'Error al cargar datos: ' + err.message;
+        el.classList.remove('d-none');
+      });
+  }
+
   function load(year) {
     currentYear = year;
+    mainStatsLoadedForYear = null;
     showLoadingView();
     document.getElementById('headerYear').textContent = year;
+
+    const requestedUserId = requestedDetailUserId();
+    if (requestedUserId !== null) {
+      if (dt) {
+        dt.destroy();
+        dt = null;
+      }
+      document.getElementById('usersTableBody').innerHTML = '';
+      loadDetail(requestedUserId, '', '', false);
+      return;
+    }
 
     if (dt) {
       dt.destroy();
@@ -111,27 +233,7 @@
         renderUsersTable(data.users);
         initDataTable();
 
-        // Paso 2: conteo de solicitudes del año
-        return fetch('/api/request-counts?year=' + encodeURIComponent(year));
-      })
-      .then(function (r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
-      })
-      .then(function (data) {
-        if (data.error) throw new Error(data.error);
-        updateRequestCounts(data.byUser, data.total, data.active);
-
-        // Paso 3: conteo de visionado
-        return fetch('/api/watch-counts?year=' + encodeURIComponent(year));
-      })
-      .then(function (r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
-      })
-      .then(function (data) {
-        if (data.error) throw new Error(data.error);
-        updateWatchCounts(data.byUser, data.total);
+        return loadMainStats(year);
       })
       .catch(function (err) {
         document.getElementById('loadingState').classList.add('d-none');
@@ -175,19 +277,6 @@
     document.getElementById('statsRow').classList.remove('d-none');
     document.getElementById('loadingState').classList.add('d-none');
     document.getElementById('tableCard').classList.remove('d-none');
-
-    const hashUserId = detailUserIdFromHash();
-    if (hashUserId !== null) {
-      if (!openDetailFromUserId(hashUserId)) {
-        globalThis.sessionStorage.removeItem(DETAIL_USER_KEY);
-      }
-      return;
-    }
-
-    const persistedDetailUserId = Number.parseInt(globalThis.sessionStorage.getItem(DETAIL_USER_KEY) || '', 10);
-    if (Number.isInteger(persistedDetailUserId) && !openDetailFromUserId(persistedDetailUserId)) {
-      globalThis.sessionStorage.removeItem(DETAIL_USER_KEY);
-    }
   }
 
   function updateRequestCounts(byUser, total, active) {
@@ -270,10 +359,10 @@
 
     const avatarEl = avatar
       ? '<img src="' + esc(avatar) + '" class="user-avatar me-2" alt="">'
-      : '<span class="avatar-fallback me-2" style="background:' + colorFor(userName) + '">' + (userName[0] || '?').toUpperCase() + '</span>';
+      : '<span class="avatar-fallback me-2" style="background:' + colorFor(userName || '?') + '">' + ((userName || '?')[0] || '?').toUpperCase() + '</span>';
 
     document.getElementById('detailUserInfo').innerHTML =
-      avatarEl + '<span class="fw-bold fs-5">' + esc(userName) + '</span>';
+      avatarEl + '<span class="fw-bold fs-5">' + esc(userName || ('Usuario #' + userId)) + '</span>';
     document.getElementById('detailYear').textContent      = currentYear;
     document.getElementById('detailTotal').textContent     = '--';
     document.getElementById('detailWatched').textContent   = '--';
@@ -293,6 +382,30 @@
       btn.classList.toggle('active', btn.dataset.filter === 'all');
     });
     allRequests = [];
+
+    fetch('/api/user?userId=' + userId)
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        if (data.error) throw new Error(data.error);
+        const resolvedUser = data.user || null;
+        if (!resolvedUser) {
+          return;
+        }
+
+        const resolvedName = resolvedUser.displayName || ('Usuario #' + userId);
+        const resolvedAvatar = resolvedUser.avatar || '';
+        const resolvedAvatarEl = resolvedAvatar
+          ? '<img src="' + esc(resolvedAvatar) + '" class="user-avatar me-2" alt="">'
+          : '<span class="avatar-fallback me-2" style="background:' + colorFor(resolvedName) + '">' + ((resolvedName[0] || '?')).toUpperCase() + '</span>';
+        document.getElementById('detailUserInfo').innerHTML =
+          resolvedAvatarEl + '<span class="fw-bold fs-5">' + esc(resolvedName) + '</span>';
+      })
+      .catch(function () {
+        // Si falla metadatos, mantenemos placeholder para no bloquear la vista.
+      });
 
     fetch('/api/user-requests?userId=' + userId + '&year=' + encodeURIComponent(currentYear))
       .then(function (r) {
@@ -465,8 +578,12 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     const sel = document.getElementById('yearSelect');
+    const refreshBtn = document.getElementById('refreshCacheBtn');
+
     load(sel.value);
     sel.addEventListener('change', function () { load(sel.value); });
+    refreshBtn.addEventListener('click', refreshCache);
+    updateRefreshButton(globalThis.CACHE_REFRESH_LOCKED_UNTIL ?? 0);
 
     document.getElementById('usersTableBody').addEventListener('click', function (e) {
       const tr = e.target.closest('tr');
@@ -490,22 +607,35 @@
         history.replaceState(null, '', globalThis.location.pathname + globalThis.location.search);
       }
 
+      if (usersCache.length === 0) {
+        load(currentYear);
+        return;
+      }
+
       document.getElementById('detailView').classList.add('d-none');
       showMainView();
+      ensureMainStatsLoaded();
     });
 
     globalThis.addEventListener('hashchange', function () {
       const hashUserId = detailUserIdFromHash();
       if (hashUserId !== null) {
-        if (usersCache.length > 0) {
-          openDetailFromUserId(hashUserId);
+        if (usersCache.length > 0 && openDetailFromUserId(hashUserId)) {
+          return;
         }
+
+        loadDetail(hashUserId, '', '', false);
         return;
       }
 
       globalThis.sessionStorage.removeItem(DETAIL_USER_KEY);
+      if (usersCache.length === 0) {
+        load(currentYear);
+        return;
+      }
       document.getElementById('detailView').classList.add('d-none');
       showMainView();
+      ensureMainStatsLoaded();
     });
 
     document.querySelectorAll('.view-btn').forEach(function (btn) {

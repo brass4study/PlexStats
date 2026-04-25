@@ -11,7 +11,6 @@ final class CachedWatchRepository implements WatchRepositoryInterface
 {
     private const CACHE_KEY       = 'tautulli_watched_keys';
     private const WATCH_TIMES_KEY = 'tautulli_watch_times';
-    private const TTL             = 300;
 
     public function __construct(
         private readonly WatchRepositoryInterface $inner,
@@ -26,7 +25,7 @@ final class CachedWatchRepository implements WatchRepositoryInterface
         }
 
         $keys = $this->inner->getWatchedRatingKeysByPlexUser();
-        $this->cache->set(self::CACHE_KEY, $keys, self::TTL);
+    $this->cache->set(self::CACHE_KEY, $keys, SessionCache::DEFAULT_TTL);
 
         return $keys;
     }
@@ -39,7 +38,7 @@ final class CachedWatchRepository implements WatchRepositoryInterface
         }
 
         $times = $this->inner->getFirstWatchedAtByPlexUser();
-        $this->cache->set(self::WATCH_TIMES_KEY, $times, self::TTL);
+        $this->cache->set(self::WATCH_TIMES_KEY, $times, SessionCache::DEFAULT_TTL);
 
         return $times;
     }

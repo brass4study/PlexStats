@@ -12,8 +12,10 @@ use PlexStats\Infrastructure\Adapters\PlexAuthService;
 use PlexStats\Infrastructure\Adapters\TautulliHttpClient;
 use PlexStats\Infrastructure\Http\AuthMiddleware;
 use PlexStats\Infrastructure\Http\Controllers\AuthController;
+use PlexStats\Infrastructure\Http\Controllers\CacheRefreshController;
 use PlexStats\Infrastructure\Http\Controllers\DashboardController;
 use PlexStats\Infrastructure\Http\Controllers\RequestCountsApiController;
+use PlexStats\Infrastructure\Http\Controllers\UserApiController;
 use PlexStats\Infrastructure\Http\Controllers\UserRequestsApiController;
 use PlexStats\Infrastructure\Http\Controllers\UsersApiController;
 use PlexStats\Infrastructure\Http\Controllers\WatchCountsApiController;
@@ -68,8 +70,10 @@ final class AppFactory
 
         // ── Controllers ───────────────────────────────────────────────
         $authCtrl     = new AuthController($plexAuth, $overseerrAuth, $config['app_url']);
+        $cacheRefreshCtrl = new CacheRefreshController($cache);
         $dashCtrl     = new DashboardController($config);
         $getUserStats = new GetUsersWithRequestStats($repository);
+        $userCtrl     = new UserApiController($repository);
         $apiCtrl      = new UsersApiController($getUserStats);
         $reqCtrl      = new UserRequestsApiController($getUserRequests);
         $reqCntCtrl   = new RequestCountsApiController($repository);
@@ -88,9 +92,19 @@ final class AppFactory
         $router->add('GET', '/auth/plex/callback', [$authCtrl, 'plexCallback']);
         $router->add('GET', '/logout',             [$authCtrl, 'logout']);
 
+        $router->add('POST', '/api/cache/refresh', static function () use ($auth, $cacheRefreshCtrl): void {
+            $auth->requireAuth();
+            $cacheRefreshCtrl->refresh();
+        });
+
         $router->add('GET', '/api/users', static function () use ($auth, $apiCtrl): void {
             $auth->requireAuth();
             $apiCtrl->index();
+        });
+
+        $router->add('GET', '/api/user', static function () use ($auth, $userCtrl): void {
+            $auth->requireAuth();
+            $userCtrl->show();
         });
 
         $router->add('GET', '/api/user-requests', static function () use ($auth, $reqCtrl): void {

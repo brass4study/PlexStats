@@ -18,6 +18,10 @@
       <span class="navbar-brand mb-0 fw-bold fs-5">PlexStats</span>
     </div>
     <div class="d-flex align-items-center gap-3">
+      <button id="refreshCacheBtn" type="button" class="btn btn-outline-primary btn-sm">
+        <i class="fas fa-rotate-right me-1"></i>
+        <span id="refreshCacheBtnLabel">Refrescar</span>
+      </button>
       <div class="d-flex align-items-center gap-2">
         <label for="yearSelect" class="text-white-50 mb-0 small fw-semibold text-uppercase">Año</label>
         <select id="yearSelect" class="form-select form-select-sm bg-dark text-white border-secondary" style="width:auto">
@@ -203,6 +207,8 @@
   <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
   <script>var CURRENT_USER_ID = <?= (int)$currentUserId ?>;</script>
+  <script>var CACHE_REFRESH_LOCKED_UNTIL = <?= (int)$cacheRefreshLockedUntil ?>;</script>
+  <script>var CACHE_REFRESH_TTL_SECONDS = <?= (int)$cacheRefreshTtlSeconds ?>;</script>
   <script src="/public/assets/js/app.js"></script>
 
 </body>

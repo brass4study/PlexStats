@@ -17,7 +17,6 @@ final class CachedUserRepository implements UserRepositoryInterface
     private const USERS_KEY    = 'seer_users';
     private const REQUESTS_KEY = 'seer_req_%d';
     private const RKEYS_KEY    = 'seer_rkeys_%d';
-    private const TTL          = 300; // segundos
 
     public function __construct(
         private readonly UserRepositoryInterface $inner,
@@ -32,7 +31,7 @@ final class CachedUserRepository implements UserRepositoryInterface
         }
 
         $users = $this->inner->findAll();
-        $this->cache->set(self::USERS_KEY, $users, self::TTL);
+    $this->cache->set(self::USERS_KEY, $users, SessionCache::DEFAULT_TTL);
 
         return $users;
     }
@@ -47,7 +46,7 @@ final class CachedUserRepository implements UserRepositoryInterface
         }
 
         $counts = $this->inner->countRequestsByUserForYear($year);
-        $this->cache->set($key, $counts, self::TTL);
+    $this->cache->set($key, $counts, SessionCache::DEFAULT_TTL);
 
         return $counts;
     }
@@ -62,7 +61,7 @@ final class CachedUserRepository implements UserRepositoryInterface
         }
 
         $keys = $this->inner->getRequestedRatingKeysByUserForYear($year);
-        $this->cache->set($key, $keys, self::TTL);
+        $this->cache->set($key, $keys, SessionCache::DEFAULT_TTL);
 
         return $keys;
     }
