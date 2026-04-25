@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use PlexStats\Application\UseCases\GetUserRequestsWithWatchStatus;
+use PlexStats\Application\UseCases\GetUsersWithRequestStats;
 use PlexStats\Infrastructure\Adapters\OverseerrAuthService;
 use PlexStats\Infrastructure\Adapters\PlexAuthService;
 use PlexStats\Infrastructure\Adapters\OverseerrHttpClient;
@@ -93,7 +94,8 @@ $auth = new AuthMiddleware();
 // ── Controllers ───────────────────────────────────────────────
 $authCtrl     = new AuthController($plexAuth, $overseerrAuth, $config['app_url']);
 $dashCtrl     = new DashboardController($config);
-$apiCtrl      = new UsersApiController($repository);
+$getUserStats = new GetUsersWithRequestStats($repository);
+$apiCtrl      = new UsersApiController($getUserStats);
 $reqCtrl      = new UserRequestsApiController($getUserRequests);
 $reqCntCtrl   = new RequestCountsApiController($repository);
 $watchCntCtrl = new WatchCountsApiController($repository, $watchRepository);

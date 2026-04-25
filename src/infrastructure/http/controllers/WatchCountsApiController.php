@@ -11,8 +11,8 @@ use Throwable;
 final class WatchCountsApiController
 {
     public function __construct(
-        private readonly UserRepositoryInterface  $userRepository,
-        private readonly WatchRepositoryInterface $watchRepository,
+        private readonly UserRepositoryInterface   $userRepository,
+        private readonly ?WatchRepositoryInterface $watchRepository,
     ) {}
 
     public function index(): void
@@ -24,16 +24,22 @@ final class WatchCountsApiController
             $year = (int)date('Y');
         }
 
+        // Sin integración Tautulli devolvemos todo a cero
+        if ($this->watchRepository === null) {
+            echo json_encode(['byUser' => [], 'total' => 0], JSON_THROW_ON_ERROR);
+            return;
+        }
+
         try {
             $requestedByUser = $this->userRepository->getRequestedRatingKeysByUserForYear($year);
             $watchedByUser   = $this->watchRepository->getWatchedRatingKeysByPlexUser();
 
-            $counts = [];
+            $byUser = [];
+            $total  = 0;
+
             foreach ($requestedByUser as $overseerrUserId => $ratingKeys) {
                 $watched = 0;
                 foreach ($ratingKeys as $ratingKey) {
-                    // Los rating keys Plex del usuario están indexados por plexId.
-                    // Si Overseerr y Plex comparten el mismo ID de usuario, comparamos directamente.
                     foreach ($watchedByUser as $watchedKeys) {
                         if (isset($watchedKeys[$ratingKey])) {
                             $watched++;
@@ -41,13 +47,11 @@ final class WatchCountsApiController
                         }
                     }
                 }
-                $counts[$overseerrUserId] = [
-                    'total'   => count($ratingKeys),
-                    'watched' => $watched,
-                ];
+                $byUser[$overseerrUserId] = $watched;
+                $total += $watched;
             }
 
-            echo json_encode(['watchCounts' => $counts], JSON_THROW_ON_ERROR);
+            echo json_encode(['byUser' => $byUser, 'total' => $total], JSON_THROW_ON_ERROR);
         } catch (Throwable $e) {
             http_response_code(502);
             echo json_encode(['error' => $e->getMessage()], JSON_THROW_ON_ERROR);
