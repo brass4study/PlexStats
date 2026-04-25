@@ -131,6 +131,39 @@
       </div>
     </div>
 
+    <div id="detailProfile" class="row g-3 mb-4 d-none">
+      <div class="col-auto">
+        <div class="stat-card stat-card--profile">
+          <div class="stat-value text-success" id="detailWatchRate">—</div>
+          <div class="stat-label">Porcentaje visto</div>
+        </div>
+      </div>
+      <div class="col-auto">
+        <div class="stat-card stat-card--profile">
+          <div class="stat-value" id="detailMovieRatio">—</div>
+          <div class="stat-label">Películas</div>
+        </div>
+      </div>
+      <div class="col-auto">
+        <div class="stat-card stat-card--profile">
+          <div class="stat-value" id="detailTvRatio">—</div>
+          <div class="stat-label">Series</div>
+        </div>
+      </div>
+      <div class="col-auto">
+        <div class="stat-card stat-card--profile stat-card--wide">
+          <div class="stat-value stat-value--compact" id="detailGenres">—</div>
+          <div class="stat-label">Géneros más solicitados</div>
+        </div>
+      </div>
+      <div class="col-auto">
+        <div class="stat-card stat-card--profile stat-card--wide">
+          <div class="stat-value stat-value--compact" id="detailWatchDelay">—</div>
+          <div class="stat-label">Tiempo medio hasta ver</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Estado cargando detalle -->
     <div id="detailLoading" class="text-center py-5 d-none">
       <output class="spinner-border text-primary mb-3" aria-label="Cargando..."></output>

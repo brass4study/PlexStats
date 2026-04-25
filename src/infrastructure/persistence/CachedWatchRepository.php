@@ -9,8 +9,9 @@ use PlexStats\Infrastructure\Persistence\InMemory\SessionCache;
 
 final class CachedWatchRepository implements WatchRepositoryInterface
 {
-    private const CACHE_KEY = 'tautulli_watched_keys';
-    private const TTL       = 300;
+    private const CACHE_KEY       = 'tautulli_watched_keys';
+    private const WATCH_TIMES_KEY = 'tautulli_watch_times';
+    private const TTL             = 300;
 
     public function __construct(
         private readonly WatchRepositoryInterface $inner,
@@ -28,5 +29,18 @@ final class CachedWatchRepository implements WatchRepositoryInterface
         $this->cache->set(self::CACHE_KEY, $keys, self::TTL);
 
         return $keys;
+    }
+
+    /** @return array<int, array<int, int>> */
+    public function getFirstWatchedAtByPlexUser(): array
+    {
+        if ($this->cache->has(self::WATCH_TIMES_KEY)) {
+            return $this->cache->get(self::WATCH_TIMES_KEY); // @phpstan-ignore-line
+        }
+
+        $times = $this->inner->getFirstWatchedAtByPlexUser();
+        $this->cache->set(self::WATCH_TIMES_KEY, $times, self::TTL);
+
+        return $times;
     }
 }

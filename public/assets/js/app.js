@@ -272,6 +272,12 @@
     document.getElementById('detailTotal').textContent     = '--';
     document.getElementById('detailWatched').textContent   = '--';
     document.getElementById('detailUnwatched').textContent = '--';
+    document.getElementById('detailWatchRate').textContent = '--';
+    document.getElementById('detailMovieRatio').textContent = '--';
+    document.getElementById('detailTvRatio').textContent = '--';
+    document.getElementById('detailGenres').textContent = '--';
+    document.getElementById('detailWatchDelay').textContent = '--';
+    document.getElementById('detailProfile').classList.add('d-none');
     document.getElementById('requestsGrid').innerHTML      = '';
     document.getElementById('detailControls').classList.add('d-none');
     document.getElementById('detailLoading').classList.remove('d-none');
@@ -303,14 +309,22 @@
 
     allRequests = data.requests || [];
     const watched = allRequests.filter(function (r) { return r.watched; }).length;
+    const profile = data.profile || {};
 
     document.getElementById('detailTotal').textContent     = allRequests.length.toLocaleString('es-ES');
     document.getElementById('detailWatched').textContent   = watched.toLocaleString('es-ES');
     document.getElementById('detailUnwatched').textContent = (allRequests.length - watched).toLocaleString('es-ES');
+    document.getElementById('detailWatchRate').textContent = (profile.watchedPercentage ?? 0).toLocaleString('es-ES') + '%';
+    document.getElementById('detailMovieRatio').textContent = (profile.movieCount ?? 0).toLocaleString('es-ES') + ' (' + (profile.moviePercentage ?? 0).toLocaleString('es-ES') + '%)';
+    document.getElementById('detailTvRatio').textContent = (profile.tvCount ?? 0).toLocaleString('es-ES') + ' (' + (profile.tvPercentage ?? 0).toLocaleString('es-ES') + '%)';
+    document.getElementById('detailGenres').textContent = (profile.topGenres || []).length > 0 ? profile.topGenres.join(' · ') : 'Sin datos';
+    document.getElementById('detailWatchDelay').textContent = profile.averageDaysToWatch == null ? 'N/D' : profile.averageDaysToWatch.toLocaleString('es-ES') + ' d';
 
     if (allRequests.length > 0) {
       document.getElementById('detailControls').classList.remove('d-none');
     }
+
+    document.getElementById('detailProfile').classList.remove('d-none');
 
     applyDetailFilters();
   }

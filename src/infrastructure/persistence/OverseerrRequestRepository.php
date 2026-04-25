@@ -19,10 +19,10 @@ final class OverseerrRequestRepository implements RequestRepositoryInterface
     ) {}
 
     /**
-     * @param  array<int, true> $watchedRatingKeys
+     * @param  array<int, int> $watchedByRatingKey
      * @return MediaRequest[]
      */
-    public function findByUserAndYear(int $overseerrUserId, int $year, array $watchedRatingKeys): array
+    public function findByUserAndYear(int $overseerrUserId, int $year, array $watchedByRatingKey): array
     {
         $rawItems = $this->fetchRawItemsForYear($overseerrUserId, $year);
         if (empty($rawItems)) {
@@ -35,6 +35,7 @@ final class OverseerrRequestRepository implements RequestRepositoryInterface
         foreach ($rawItems as $item) {
             $detail    = $detailCache[$item['mediaType'] . ':' . $item['tmdbId']];
             $ratingKey = $item['ratingKey'];
+            $watchedAt = $ratingKey !== 0 ? ($watchedByRatingKey[$ratingKey] ?? null) : null;
 
             $results[] = new MediaRequest(
                 id:         $item['id'],
@@ -42,14 +43,17 @@ final class OverseerrRequestRepository implements RequestRepositoryInterface
                 mediaType:  $item['mediaType'],
                 posterPath: $detail['posterPath'],
                 ratingKey:  $ratingKey,
-                watched:    $ratingKey !== 0 && isset($watchedRatingKeys[$ratingKey]),
+                watched:    $watchedAt !== null,
+                requestedAt: $item['requestedAt'],
+                genres:     $detail['genres'],
+                watchedAt:  $watchedAt,
             );
         }
 
         return $results;
     }
 
-    /** @return array<int, array{id: int, tmdbId: int, mediaType: string, ratingKey: int}> */
+    /** @return array<int, array{id: int, tmdbId: int, mediaType: string, ratingKey: int, requestedAt: string}> */
     private function fetchRawItemsForYear(int $overseerrUserId, int $year): array
     {
         $rawItems = [];
@@ -79,11 +83,12 @@ final class OverseerrRequestRepository implements RequestRepositoryInterface
 
     /**
      * @param  array<string, mixed> $req
-     * @return array{id: int, tmdbId: int, mediaType: string, ratingKey: int}|null
+     * @return array{id: int, tmdbId: int, mediaType: string, ratingKey: int, requestedAt: string}|null
      */
     private function extractRawItem(array $req, int $year): ?array
     {
-        if ((int)substr((string)($req['createdAt'] ?? ''), 0, 4) !== $year) {
+        $requestedAt = (string)($req['createdAt'] ?? '');
+        if ((int)substr($requestedAt, 0, 4) !== $year) {
             return null;
         }
         $media  = $req['media'] ?? [];
@@ -97,12 +102,13 @@ final class OverseerrRequestRepository implements RequestRepositoryInterface
             'tmdbId'    => $tmdbId,
             'mediaType' => (string)($media['mediaType'] ?? 'movie'),
             'ratingKey' => (int)($media['ratingKey'] ?? 0),
+            'requestedAt' => $requestedAt,
         ];
     }
 
     /**
      * @param  array<int, array{tmdbId: int, mediaType: string}> $rawItems
-     * @return array<string, array{title: string, posterPath: string}>
+    * @return array<string, array{title: string, posterPath: string, genres: list<string>}>
      */
     private function buildDetailCache(array $rawItems): array
     {
@@ -116,19 +122,27 @@ final class OverseerrRequestRepository implements RequestRepositoryInterface
         return $cache;
     }
 
-    /** @return array{title: string, posterPath: string} */
+    /** @return array{title: string, posterPath: string, genres: list<string>} */
     private function fetchMediaDetail(int $tmdbId, string $mediaType): array
     {
         $path = $mediaType === 'tv' ? '/tv/' . $tmdbId : '/movie/' . $tmdbId;
         try {
             $data = $this->client->get($path);
         } catch (OverseerrException) {
-            return ['title' => '', 'posterPath' => ''];
+            return ['title' => '', 'posterPath' => '', 'genres' => []];
+        }
+
+        $genres = [];
+        foreach ((array)($data['genres'] ?? []) as $genre) {
+            if (is_array($genre) && isset($genre['name']) && $genre['name'] !== '') {
+                $genres[] = (string)$genre['name'];
+            }
         }
 
         return [
             'title'      => (string)($data['title'] ?? $data['name'] ?? $data['originalTitle'] ?? $data['originalName'] ?? ''),
             'posterPath' => (string)($data['posterPath'] ?? ''),
+            'genres'     => $genres,
         ];
     }
 }

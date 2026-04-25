@@ -23,10 +23,10 @@ final class TautulliWatchRepository implements WatchRepositoryInterface
      */
     public function getWatchedRatingKeysByPlexUser(): array
     {
-        $result = $this->collectMovieKeys();
+        $result = [];
 
-        foreach ($this->collectTvShowKeys() as $userId => $keys) {
-            foreach ($keys as $key => $v) {
+        foreach ($this->getFirstWatchedAtByPlexUser() as $userId => $keys) {
+            foreach ($keys as $key => $watchedAt) {
                 $result[$userId][$key] = true;
             }
         }
@@ -34,8 +34,22 @@ final class TautulliWatchRepository implements WatchRepositoryInterface
         return $result;
     }
 
-    /** @return array<int, array<int, true>> */
-    private function collectMovieKeys(): array
+    /** @return array<int, array<int, int>> */
+    public function getFirstWatchedAtByPlexUser(): array
+    {
+        $result = $this->collectMovieWatchTimes();
+
+        foreach ($this->collectTvShowWatchTimes() as $userId => $keys) {
+            foreach ($keys as $key => $watchedAt) {
+                $this->rememberEarlierWatchTime($result, $userId, $key, $watchedAt);
+            }
+        }
+
+        return $result;
+    }
+
+    /** @return array<int, array<int, int>> */
+    private function collectMovieWatchTimes(): array
     {
         $result = [];
 
@@ -45,41 +59,67 @@ final class TautulliWatchRepository implements WatchRepositoryInterface
             }
             $userId    = (int)($item['user_id'] ?? 0);
             $ratingKey = (int)($item['rating_key'] ?? 0);
-            if ($userId !== 0 && $ratingKey !== 0) {
-                $result[$userId][$ratingKey] = true;
+            $watchedAt = (int)($item['date'] ?? 0);
+            if ($userId !== 0 && $ratingKey !== 0 && $watchedAt !== 0) {
+                $this->rememberEarlierWatchTime($result, $userId, $ratingKey, $watchedAt);
             }
         }
 
         return $result;
     }
 
-    /** @return array<int, array<int, true>> */
-    private function collectTvShowKeys(): array
+    /** @return array<int, array<int, int>> */
+    private function collectTvShowWatchTimes(): array
     {
         /** @var array<int, array<int, int>> $episodeCounts */
         $episodeCounts = [];
+        /** @var array<int, array<int, int>> $firstEpisodeAt */
+        $firstEpisodeAt = [];
 
         foreach ($this->paginateHistory('episode') as $item) {
             if (!$this->isWatched($item)) {
                 continue;
             }
-            $userId  = (int)($item['user_id'] ?? 0);
+            $userId = (int)($item['user_id'] ?? 0);
             $showKey = (int)($item['grandparent_rating_key'] ?? 0);
-            if ($userId !== 0 && $showKey !== 0) {
-                $episodeCounts[$userId][$showKey] = ($episodeCounts[$userId][$showKey] ?? 0) + 1;
-            }
+            $watchedAt = (int)($item['date'] ?? 0);
+            $this->registerEpisodeWatch($episodeCounts, $firstEpisodeAt, $userId, $showKey, $watchedAt);
         }
 
         $result = [];
         foreach ($episodeCounts as $userId => $shows) {
             foreach ($shows as $showKey => $count) {
-                if ($count > self::MIN_EPISODES_TV) {
-                    $result[$userId][$showKey] = true;
+                if ($count > self::MIN_EPISODES_TV && isset($firstEpisodeAt[$userId][$showKey])) {
+                    $result[$userId][$showKey] = $firstEpisodeAt[$userId][$showKey];
                 }
             }
         }
 
         return $result;
+    }
+
+    /** @param array<int, array<int, int>> $watchTimes */
+    private function rememberEarlierWatchTime(array &$watchTimes, int $userId, int $ratingKey, int $watchedAt): void
+    {
+        if (!isset($watchTimes[$userId][$ratingKey]) || $watchedAt < $watchTimes[$userId][$ratingKey]) {
+            $watchTimes[$userId][$ratingKey] = $watchedAt;
+        }
+    }
+
+    /**
+     * @param array<int, array<int, int>> $episodeCounts
+     * @param array<int, array<int, int>> $firstEpisodeAt
+     */
+    private function registerEpisodeWatch(array &$episodeCounts, array &$firstEpisodeAt, int $userId, int $showKey, int $watchedAt): void
+    {
+        if ($userId === 0 || $showKey === 0) {
+            return;
+        }
+
+        $episodeCounts[$userId][$showKey] = ($episodeCounts[$userId][$showKey] ?? 0) + 1;
+        if ($watchedAt !== 0) {
+            $this->rememberEarlierWatchTime($firstEpisodeAt, $userId, $showKey, $watchedAt);
+        }
     }
 
     /** @param array<string, mixed> $item */

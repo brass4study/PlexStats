@@ -58,6 +58,7 @@ final class AppFactory
         }
 
         $getUserRequests = new GetUserRequestsWithWatchStatus(
+            $repository,
             new OverseerrRequestRepository($httpClient),
             $watchRepository,
         );

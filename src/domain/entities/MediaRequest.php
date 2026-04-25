@@ -13,5 +13,8 @@ final class MediaRequest
         public readonly string $posterPath,
         public readonly int    $ratingKey,
         public readonly bool   $watched,
+        public readonly string $requestedAt,
+        public readonly array  $genres = [],
+        public readonly ?int   $watchedAt = null,
     ) {}
 }

@@ -10,4 +10,9 @@ interface WatchRepositoryInterface
      * @return array<int, array<int, true>>  [ plexUserId => [ ratingKey => true ] ]
      */
     public function getWatchedRatingKeysByPlexUser(): array;
+
+    /**
+     * @return array<int, array<int, int>>  [ plexUserId => [ ratingKey => firstWatchedAt ] ]
+     */
+    public function getFirstWatchedAtByPlexUser(): array;
 }

@@ -12,12 +12,6 @@
 - Heatmap of activity by month
 - Monthly ranking of most active users
 
-### 3. Richer user profile
-- Watched percentage per user
-- Average time from request to watch
-- Most requested genres
-- Movie vs TV ratio per user
-
 ### 4. Global rankings
 - Top users by requests
 - Top requested titles

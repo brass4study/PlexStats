@@ -9,8 +9,8 @@ use PlexStats\Domain\Entities\MediaRequest;
 interface RequestRepositoryInterface
 {
     /**
-     * @param  array<int, true> $watchedRatingKeys
+     * @param  array<int, int> $watchedByRatingKey  [ ratingKey => firstWatchedAt ]
      * @return MediaRequest[]
      */
-    public function findByUserAndYear(int $overseerrUserId, int $year, array $watchedRatingKeys): array;
+    public function findByUserAndYear(int $overseerrUserId, int $year, array $watchedByRatingKey): array;
 }
