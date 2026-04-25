@@ -29,7 +29,7 @@ final class AppFactory
 {
     public static function create(): Router
     {
-        $config = require_once __DIR__ . '/../../config/app.php';
+        $config = require_once __DIR__ . '/../config/app.php';
 
         // ── Session ───────────────────────────────────────────────────
         session_set_cookie_params([

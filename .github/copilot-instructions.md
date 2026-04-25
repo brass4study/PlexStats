@@ -7,9 +7,9 @@
 - Servidor Apache con `.htaccess`, rewrite a `index.php`
 
 ## Configuration
-- Config en `config/app.php` (array PHP, nunca hardcoded). En `.gitignore`.
+- Config en `src/config/app.php` (array PHP, nunca hardcoded). En `.gitignore`.
 - Claves: `overseerr_url`, `overseerr_api_key`, `app_url`, `plex_client_id`, `plex_app_name`, `start_year`
-- Plantilla sin datos sensibles: `config/app.example.php`
+- Plantilla sin datos sensibles: `src/config/app.example.php`
 
 ## Authentication
 - Login exclusivamente via Plex OAuth (flujo PIN: `plex.tv/api/v2/pins`)

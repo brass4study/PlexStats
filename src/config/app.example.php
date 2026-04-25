@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-// Copia este archivo como config/app.php y rellena los valores.
+// Copia este archivo como src/config/app.php y rellena los valores.
 return [
     // URL base de tu servidor Overseerr (sin barra final)
     'overseerr_url'     => 'https://your-overseerr-server/api/v1',

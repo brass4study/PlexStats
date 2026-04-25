@@ -36,10 +36,10 @@ cd PlexStats
 Copia el archivo de ejemplo y edítalo con tus datos:
 
 ```bash
-cp config/app.example.php config/app.php
+cp src/config/app.example.php src/config/app.php
 ```
 
-Edita `config/app.php`:
+Edita `src/config/app.php`:
 
 ```php
 <?php

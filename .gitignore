@@ -2,7 +2,7 @@
 vendor/
 
 # Configuración con datos sensibles
-config/app.php
+src/config/app.php
 
 # Variables de entorno
 .env
