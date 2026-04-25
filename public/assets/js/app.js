@@ -40,6 +40,13 @@
     return '<span class="avatar-fallback me-2" style="background:' + bg + '">' + initial + '</span>';
   }
 
+  function formatRequestDate(value) {
+    if (!value) return 'N/D';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'N/D';
+    return date.toLocaleDateString('es-ES');
+  }
+
   function typeBadge(userType, permissions) {
     if ((permissions & 2) === 2) return '<span class="badge bg-danger">Admin</span>';
     if (userType === 2)          return '<span class="badge bg-info text-dark">Local</span>';
@@ -86,7 +93,6 @@
     currentYear = year;
     showLoadingView();
     document.getElementById('headerYear').textContent = year;
-    document.getElementById('thYear').textContent = year;
 
     if (dt) {
       dt.destroy();
@@ -340,12 +346,18 @@
       return;
     }
 
+    if (currentView === 'table') {
+      renderTableView(grid, reqs);
+      return;
+    }
+
     const isList = currentView === 'list';
 
     reqs.forEach(function (r) {
       const poster = r.posterPath
         ? 'https://image.tmdb.org/t/p/w185' + r.posterPath
         : null;
+      const requestedDateHtml = '<div class="request-date">' + formatRequestDate(r.requestedAt) + '</div>';
 
       const iconName = r.mediaType === 'tv' ? 'tv' : 'film';
       let posterHtml;
@@ -367,6 +379,9 @@
       const watchStatusIcon = r.watched
         ? '<span class="watch-status-icon text-success"><i class="fas fa-check-circle"></i></span>'
         : '';
+      const watchStatusLabel = r.watched
+        ? '<span class="watch-status-label text-success">Vista</span>'
+        : '<span class="watch-status-label text-muted">No vista</span>';
 
       let cardHtml;
       if (isList) {
@@ -375,8 +390,11 @@
             '<div class="request-poster-wrap position-relative">' + posterHtml + '</div>' +
             '<div class="request-card-body">' +
               '<div class="request-title" title="' + esc(r.title) + '">' + esc(r.title) + '</div>' +
-              typeBadgeHtml +
-              watchStatusIcon +
+              '<div class="request-list-meta">' +
+                '<div class="request-list-meta-col request-list-meta-col--type">' + typeBadgeHtml + '</div>' +
+                '<div class="request-list-meta-col request-list-meta-col--status">' + watchStatusIcon + watchStatusLabel + '</div>' +
+                '<div class="request-list-meta-col request-list-meta-col--date">' + requestedDateHtml + '</div>' +
+              '</div>' +
             '</div>' +
           '</div>';
       } else {
@@ -388,7 +406,7 @@
             '</div>' +
             '<div class="request-card-body">' +
               '<div class="request-title" title="' + esc(r.title) + '">' + esc(r.title) + '</div>' +
-              '<div class="mt-1">' + typeBadgeHtml + '</div>' +
+              '<div class="request-card-meta mt-1">' + typeBadgeHtml + requestedDateHtml + '</div>' +
             '</div>' +
           '</div>';
       }
@@ -397,6 +415,36 @@
         '<div class="req-item">' + cardHtml + '</div>'
       );
     });
+  }
+
+  function renderTableView(grid, reqs) {
+    const rows = reqs.map(function (r) {
+      const typeLabel = r.mediaType === 'tv'
+        ? '<span class="badge bg-info text-dark">Serie</span>'
+        : '<span class="badge bg-primary">Pel&iacute;cula</span>';
+      const statusLabel = r.watched
+        ? '<span class="text-success fw-semibold">Vista</span>'
+        : '<span class="text-muted fw-semibold">No vista</span>';
+
+      return ''
+        + '<div class="request-table-row' + (r.watched ? ' request-table-row--watched' : '') + '">'
+        +   '<div class="request-table-col request-table-col--title" title="' + esc(r.title) + '">' + esc(r.title) + '</div>'
+        +   '<div class="request-table-col request-table-col--type">' + typeLabel + '</div>'
+        +   '<div class="request-table-col request-table-col--status">' + statusLabel + '</div>'
+        +   '<div class="request-table-col request-table-col--date">' + formatRequestDate(r.requestedAt) + '</div>'
+        + '</div>';
+    }).join('');
+
+    grid.innerHTML = ''
+      + '<div class="request-table">'
+      +   '<div class="request-table-head">'
+      +     '<div class="request-table-col request-table-col--title">T&iacute;tulo</div>'
+      +     '<div class="request-table-col request-table-col--type">Tipo</div>'
+      +     '<div class="request-table-col request-table-col--status">Estado</div>'
+      +     '<div class="request-table-col request-table-col--date">Solicitud</div>'
+      +   '</div>'
+      +   rows
+      + '</div>';
   }
 
   function filterGrid(query) {

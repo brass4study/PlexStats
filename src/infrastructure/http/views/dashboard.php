@@ -89,9 +89,9 @@
               <th>Usuario</th>
               <th>Email</th>
               <th>Tipo</th>
-              <th class="text-end">Solicitudes <span id="thYear"><?= (int)$currentYear ?></span></th>
-              <th class="text-end">Visto (total)</th>
-              <th class="text-end pe-3">Total histórico</th>
+              <th class="text-end">Solicitudes</th>
+              <th class="text-end">Vistas</th>
+              <th class="text-end pe-3">Total</th>
             </tr>
           </thead>
           <tbody id="usersTableBody"></tbody>
@@ -187,6 +187,9 @@
         </button>
         <button type="button" class="btn btn-outline-secondary view-btn" data-view="list" title="Lista">
           <i class="fas fa-list"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary view-btn" data-view="table" title="Tabla">
+          <i class="fas fa-table"></i>
         </button>
       </div>
     </div>
